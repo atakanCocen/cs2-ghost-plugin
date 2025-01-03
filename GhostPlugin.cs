@@ -42,7 +42,7 @@ public class GhostPlugin : BasePlugin
 
         if (player.Team == CsTeam.Terrorist)
         {
-            RemoveGhostWeapons(player);
+            AddTimer(1.0f, () => RemoveGhostWeapons(player));
         }
 
         return HookResult.Continue;
@@ -50,6 +50,8 @@ public class GhostPlugin : BasePlugin
 
     private static void RemoveGhostWeapons(CCSPlayerController player)
     {
+        Console.WriteLine($"Removing {player.PlayerName}'s weapons.");
+
         if (player == null || !player.IsValid)
             return;
 
@@ -71,10 +73,11 @@ public class GhostPlugin : BasePlugin
 
         if (player.Team == CsTeam.Terrorist)
         {
-            alpha = Math.Clamp((int)pawn.Speed - 5, 0, 255);
+            Console.WriteLine($"${player.PlayerName}'s speed: {pawn.Speed} - velocity: {pawn.AbsVelocity.Length2D()}");
+            alpha = Math.Clamp((int)pawn.AbsVelocity.Length2D(), 0, 255);
         }
 
-        Console.WriteLine($"Setting player {player.UserId} alpha to {alpha}");
+        Console.WriteLine($"Setting {player.PlayerName}'s alpha to {alpha}");
 
         SetEntityAlpha(pawn, alpha);
     }
