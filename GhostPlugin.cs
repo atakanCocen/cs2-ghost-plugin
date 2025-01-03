@@ -15,15 +15,13 @@ public class GhostPlugin : BasePlugin
 
     public override string ModuleVersion => Version;
 
-    public static readonly string LogPrefix = $"[GhostPlugin] {Version}";
-
     public override void Load(bool hotReload)
     {
         Console.WriteLine($"{ModuleName} {ModuleVersion} loaded!");
 
         if (hotReload)
         {
-            Server.PrintToChatAll($"{LogPrefix}Update detected, restarting map...");
+            MessageUtil.PrintToChatAll("Update detected, restarting map...");
             Server.ExecuteCommand($"map {Server.MapName}");
         }
 
@@ -50,7 +48,7 @@ public class GhostPlugin : BasePlugin
 
     private static void RemoveGhostWeapons(CCSPlayerController player)
     {
-        Console.WriteLine($"Removing {player.PlayerName}'s weapons.");
+        MessageUtil.WriteLine($"Removing {player.PlayerName}'s weapons.");
 
         if (player == null || !player.IsValid)
             return;
@@ -73,11 +71,11 @@ public class GhostPlugin : BasePlugin
 
         if (player.Team == CsTeam.Terrorist)
         {
-            Console.WriteLine($"${player.PlayerName}'s speed: {pawn.Speed} - velocity: {pawn.AbsVelocity.Length2D()}");
+            MessageUtil.WriteLine($"${player.PlayerName}'s speed: {pawn.Speed} - velocity: {pawn.AbsVelocity.Length2D()}");
             alpha = Math.Clamp((int)pawn.AbsVelocity.Length2D(), 0, 255);
         }
 
-        Console.WriteLine($"Setting {player.PlayerName}'s alpha to {alpha}");
+        MessageUtil.WriteLine($"Setting {player.PlayerName}'s alpha to {alpha}");
 
         SetEntityAlpha(pawn, alpha);
     }
