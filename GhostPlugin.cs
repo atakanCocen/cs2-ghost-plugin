@@ -2,6 +2,7 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Entities.Constants;
 using CounterStrikeSharp.API.Modules.Utils;
 
 namespace GhostPlugin;
@@ -29,18 +30,34 @@ public class GhostPlugin : BasePlugin
         AddTimer(0.1f, () => Utilities.GetPlayers().ForEach(SetPlayerAlphaBasedOnSpeed), CounterStrikeSharp.API.Modules.Timers.TimerFlags.REPEAT);
     }
 
-    // private void RemoveGhostWeapons(CBasePlayerController player)
-    // {
-    //     if (player == null || !player.IsValid)
-    //         return;
+    [GameEventHandler]
+    public HookResult OnPlayerSpawned(EventPlayerSpawned @event, GameEventInfo info)
+    {
+        var player = @event.Userid;
 
-    //     var pawn = player.Pawn.Get();
+        if (player == null || !player.IsValid)
+        {
+            return HookResult.Continue;
+        }
 
-    //     if (pawn == null || !pawn.IsValid)
-    //         return;
-    // }
+        if (player.Team == CsTeam.Terrorist)
+        {
+            RemoveGhostWeapons(player);
+        }
 
-    private void SetPlayerAlphaBasedOnSpeed(CCSPlayerController player)
+        return HookResult.Continue;
+    }
+
+    private static void RemoveGhostWeapons(CCSPlayerController player)
+    {
+        if (player == null || !player.IsValid)
+            return;
+
+        player.RemoveWeapons();
+        player.GiveNamedItem(CsItem.DefaultKnifeT);
+    }
+
+    private static void SetPlayerAlphaBasedOnSpeed(CCSPlayerController player)
     {
         if (player == null || !player.IsValid)
             return;
@@ -52,14 +69,22 @@ public class GhostPlugin : BasePlugin
 
         int alpha = 255;
 
-        if (player.Team == CsTeam.CounterTerrorist)
+        if (player.Team == CsTeam.Terrorist)
         {
-            alpha = Math.Min((int)pawn.AbsVelocity.Length(), 255);
+            alpha = Math.Clamp((int)pawn.Speed - 5, 0, 255);
         }
 
         Console.WriteLine($"Setting player {player.UserId} alpha to {alpha}");
 
-        pawn.Render = Color.FromArgb(alpha, 255, 255, 255);
-        Utilities.SetStateChanged(pawn, "CBaseModelEntity", "m_clrRender");
+        SetEntityAlpha(pawn, alpha);
+    }
+
+    private static void SetEntityAlpha(CBaseModelEntity entity, int alpha)
+    {
+        if (entity == null || !entity.IsValid)
+            return;
+
+        entity.Render = Color.FromArgb(alpha, 255, 255, 255);
+        Utilities.SetStateChanged(entity, "CBaseModelEntity", "m_clrRender");
     }
 }
