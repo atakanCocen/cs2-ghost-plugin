@@ -71,7 +71,7 @@ public class GhostPlugin : BasePlugin
 
         if (player.Team == CsTeam.Terrorist)
         {
-            MessageUtil.WriteLine($"${player.PlayerName}'s speed: {pawn.Speed} - velocity: {pawn.AbsVelocity.Length2D()}");
+            MessageUtil.WriteLine($"{player.PlayerName}'s speed: {pawn.Speed} - velocity: {pawn.AbsVelocity.Length2D()}");
             alpha = Math.Clamp((int)pawn.AbsVelocity.Length2D(), 0, 255);
         }
 
