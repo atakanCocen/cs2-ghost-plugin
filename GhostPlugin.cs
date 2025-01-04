@@ -36,38 +36,29 @@ public class GhostPlugin : BasePlugin
     }
 
     [GameEventHandler]
-    public HookResult OnPlayerSpawned(EventPlayerSpawned @event, GameEventInfo info)
+    public HookResult OnPlayerSpawned(EventPlayerSpawn @event, GameEventInfo info)
     {
         var player = @event.Userid;
 
-        if (player == null || !player.IsValid)
-        {
-            return HookResult.Continue;
-        }
+        Server.NextFrame(() =>
+            {
+                AddTimer(0.2f, () =>
+                {
+                    if (IsValidGhost(player))
+                    {
+                        RemoveAllPlayerWeapons(player);
+                    }
+                }, TimerFlags.STOP_ON_MAPCHANGE);
+            }
+        );
 
-        if (player.Team == CsTeam.Terrorist)
-        {
-            RemoveGhostWeapons(player);
-        }
 
         return HookResult.Continue;
     }
 
-    private void RemoveGhostWeapons(CCSPlayerController player)
+    private static bool IsValidGhost(CCSPlayerController? player)
     {
-        MessageUtil.WriteLine($"Removing {player.PlayerName}'s weapons.");
-
-        if (player == null || !player.IsValid)
-            return;
-
-        Server.NextFrame(() =>
-        {
-            AddTimer(0.1f, () =>
-            {
-                RemoveAllPlayerWeapons(player);
-            }, TimerFlags.STOP_ON_MAPCHANGE);
-
-        });
+        return player != null && player.IsValid && player.Team == CsTeam.Terrorist;
     }
 
     private static void UpdateAllGhostAlphas()
@@ -84,13 +75,15 @@ public class GhostPlugin : BasePlugin
         });
     }
 
-    public static void RemoveAllPlayerWeapons(CCSPlayerController player)
+    public static void RemoveAllPlayerWeapons(CCSPlayerController? player)
     {
         if (player == null || !player.IsValid) return;
         if (player.PlayerPawn == null || !player.PlayerPawn.IsValid) return;
         if (!player.PawnIsAlive) return;
         if (player.PlayerPawn.Value == null || !player.PlayerPawn.Value.IsValid) return;
         if (player.PlayerPawn.Value?.WeaponServices?.MyWeapons == null) return;
+
+        MessageUtil.WriteLine($"Removing {player.PlayerName}'s weapons.");
 
         foreach (var weapon in player.PlayerPawn.Value.WeaponServices.MyWeapons)
         {
