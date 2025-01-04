@@ -3,6 +3,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
+using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 
 namespace GhostPlugin;
@@ -25,7 +26,13 @@ public class GhostPlugin : BasePlugin
             Server.ExecuteCommand($"map {Server.MapName}");
         }
 
-        AddTimer(0.1f, () => Utilities.GetPlayers().ForEach(SetPlayerAlphaBasedOnSpeed), CounterStrikeSharp.API.Modules.Timers.TimerFlags.REPEAT);
+        RegisterListener<Listeners.OnTick>(OnTick);
+    }
+
+    [GameEventHandler]
+    private void OnTick()
+    {
+        UpdateAllGhostAlphas();
     }
 
     [GameEventHandler]
@@ -40,42 +47,66 @@ public class GhostPlugin : BasePlugin
 
         if (player.Team == CsTeam.Terrorist)
         {
-            AddTimer(1.0f, () => RemoveGhostWeapons(player));
+            RemoveGhostWeapons(player);
         }
 
         return HookResult.Continue;
     }
 
-    private static void RemoveGhostWeapons(CCSPlayerController player)
+    private void RemoveGhostWeapons(CCSPlayerController player)
     {
         MessageUtil.WriteLine($"Removing {player.PlayerName}'s weapons.");
 
         if (player == null || !player.IsValid)
             return;
 
-        player.RemoveWeapons();
-        player.GiveNamedItem(CsItem.DefaultKnifeT);
+        Server.NextFrame(() =>
+        {
+            AddTimer(0.1f, () =>
+            {
+                RemoveAllPlayerWeapons(player);
+            }, TimerFlags.STOP_ON_MAPCHANGE);
+
+        });
     }
 
-    private static void SetPlayerAlphaBasedOnSpeed(CCSPlayerController player)
+    private static void UpdateAllGhostAlphas()
     {
-        if (player == null || !player.IsValid)
-            return;
-
-        var pawn = player.Pawn.Get();
-
-        if (pawn == null || !pawn.IsValid)
-            return;
-
-        int alpha = 255;
-
-        if (player.Team == CsTeam.Terrorist)
+        Utilities.GetPlayers().ForEach(player =>
         {
-            MessageUtil.WriteLine($"{player.PlayerName}'s speed: {pawn.Speed} - velocity: {pawn.AbsVelocity.Length2D()}");
-            alpha = Math.Clamp((int)pawn.AbsVelocity.Length2D(), 0, 255);
-        }
+            if (player == null || !player.IsValid || player.Team != CsTeam.Terrorist)
+                return;
 
-        MessageUtil.WriteLine($"Setting {player.PlayerName}'s alpha to {alpha}");
+            if (player.PlayerPawn == null || !player.PlayerPawn.IsValid || !player.PawnIsAlive)
+                return;
+
+            SetPlayerAlphaBasedOnSpeed(player.PlayerPawn.Value!);
+        });
+    }
+
+    public static void RemoveAllPlayerWeapons(CCSPlayerController player)
+    {
+        if (player == null || !player.IsValid) return;
+        if (player.PlayerPawn == null || !player.PlayerPawn.IsValid) return;
+        if (!player.PawnIsAlive) return;
+        if (player.PlayerPawn.Value == null || !player.PlayerPawn.Value.IsValid) return;
+        if (player.PlayerPawn.Value?.WeaponServices?.MyWeapons == null) return;
+
+        foreach (var weapon in player.PlayerPawn.Value.WeaponServices.MyWeapons)
+        {
+            if (weapon == null || !weapon.IsValid) continue;
+            var weaponValue = weapon.Value;
+            if (weaponValue == null || !weaponValue.IsValid) continue;
+            if (weaponValue.DesignerName?.Contains("weapon_knife") ?? false) continue;
+            if (weaponValue.DesignerName == null) continue;
+            player.DropActiveWeapon();
+            weapon.Value?.Remove();
+        }
+    }
+
+    private static void SetPlayerAlphaBasedOnSpeed(CCSPlayerPawn pawn)
+    {
+        int alpha = Math.Clamp((int)pawn.AbsVelocity.Length2D() - 5, 0, 255);
 
         SetEntityAlpha(pawn, alpha);
     }
