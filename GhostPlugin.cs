@@ -123,7 +123,7 @@ public class GhostPlugin : BasePlugin
 
     private static void SetPlayerAlphaBasedOnSpeed(CCSPlayerPawn pawn)
     {
-        const int MAX_ALPHA = 30;
+        const int MAX_ALPHA = 100;
         int alpha = Math.Clamp((int)pawn.AbsVelocity.Length2D() - 5, 0, MAX_ALPHA);
 
         pawn.ShadowStrength = alpha / MAX_ALPHA;
