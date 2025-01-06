@@ -38,6 +38,7 @@ public class GhostPlugin : BasePlugin
     [GameEventHandler]
     public HookResult OnPlayerSpawned(EventPlayerSpawn @event, GameEventInfo info)
     {
+        // TODO prevent ghosts from picking up weapons and buying (maybe set money to 0?)
         var player = @event.Userid;
 
         Server.NextFrame(() =>
@@ -52,6 +53,26 @@ public class GhostPlugin : BasePlugin
             }
         );
 
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
+    {
+        Server.NextFrame(() =>
+        {
+            Utilities.GetPlayers().ForEach(player =>
+            {
+                if (IsValidGhost(player))
+                {
+                    SetPlayerMoney(player, 0);
+                }
+                else if (IsValidHuman(player))
+                {
+                    SetPlayerMoney(player, 10000);
+                }
+            });
+        });
 
         return HookResult.Continue;
     }
@@ -59,6 +80,11 @@ public class GhostPlugin : BasePlugin
     private static bool IsValidGhost(CCSPlayerController? player)
     {
         return player != null && player.IsValid && player.Team == CsTeam.Terrorist;
+    }
+
+    private static bool IsValidHuman(CCSPlayerController? player)
+    {
+        return player != null && player.IsValid && player.Team == CsTeam.CounterTerrorist;
     }
 
     private static void UpdateAllGhostAlphas()
@@ -85,13 +111,25 @@ public class GhostPlugin : BasePlugin
 
         player.RemoveWeapons();
         player.GiveNamedItem(CsItem.DefaultKnifeT);
+
+        if (player.PlayerPawn.Value?.WeaponServices != null)
+        {
+            player.PlayerPawn.Value.WeaponServices.PreventWeaponPickup = true;
+        }
     }
 
     private static void SetPlayerAlphaBasedOnSpeed(CCSPlayerPawn pawn)
     {
-        int alpha = Math.Clamp((int)pawn.AbsVelocity.Length2D() - 5, 0, 255);
+        int alpha = Math.Clamp((int)pawn.AbsVelocity.Length2D() - 5, 0, 150);
 
         SetEntityAlpha(pawn, alpha);
+
+        var weapon = pawn.WeaponServices?.ActiveWeapon?.Value;
+
+        if (weapon != null && weapon.IsValid)
+        {
+            SetEntityAlpha(weapon, alpha);
+        }
     }
 
     private static void SetEntityAlpha(CBaseModelEntity entity, int alpha)
@@ -101,5 +139,15 @@ public class GhostPlugin : BasePlugin
 
         entity.Render = Color.FromArgb(alpha, 255, 255, 255);
         Utilities.SetStateChanged(entity, "CBaseModelEntity", "m_clrRender");
+    }
+
+    private static void SetPlayerMoney(CCSPlayerController controller, int money)
+    {
+        var moneyServices = controller.InGameMoneyServices;
+        if (moneyServices == null) return;
+
+        moneyServices.Account = money;
+
+        Utilities.SetStateChanged(controller, "CCSPlayerController", "m_pInGameMoneyServices");
     }
 }
