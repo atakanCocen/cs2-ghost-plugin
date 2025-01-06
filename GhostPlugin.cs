@@ -46,7 +46,7 @@ public class GhostPlugin : BasePlugin
                 {
                     SetPlayerMoney(player, 0);
                     RemoveWeaponsFromPlayer(player);
-                    SetPlayerVelocityMultiplier(player, 1.5f);
+                    SetPlayerVelocityMultiplier(player, 1.4f);
                 }
                 else if (IsValidHuman(player))
                 {
@@ -102,9 +102,9 @@ public class GhostPlugin : BasePlugin
 
         MessageUtil.WriteLine($"Removing {player.PlayerName}'s weapons.");
 
-        player.RemoveWeapons();
-
         SetAllowWeaponPickup(player, true);
+
+        player.RemoveWeapons();
 
         player.GiveNamedItem(CsItem.DefaultKnifeT);
 
@@ -118,14 +118,15 @@ public class GhostPlugin : BasePlugin
             return;
         }
 
-        player.PlayerPawn.Value.WeaponServices.PreventWeaponPickup = false;
+        player.PlayerPawn.Value.WeaponServices.PreventWeaponPickup = !allow;
     }
 
     private static void SetPlayerAlphaBasedOnSpeed(CCSPlayerPawn pawn)
     {
-        int alpha = Math.Clamp((int)pawn.AbsVelocity.Length2D() - 5, 0, 150);
+        const int MAX_ALPHA = 30;
+        int alpha = Math.Clamp((int)pawn.AbsVelocity.Length2D() - 5, 0, MAX_ALPHA);
 
-        pawn.ShadowStrength = alpha > 0 ? 1 : 0;
+        pawn.ShadowStrength = alpha / MAX_ALPHA;
 
         SetEntityAlpha(pawn, alpha);
 
@@ -133,7 +134,7 @@ public class GhostPlugin : BasePlugin
 
         if (weapon != null && weapon.IsValid)
         {
-            SetEntityAlpha(weapon, alpha);
+            SetEntityAlpha(weapon, 0);
         }
     }
 
