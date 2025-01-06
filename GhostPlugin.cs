@@ -36,27 +36,6 @@ public class GhostPlugin : BasePlugin
     }
 
     [GameEventHandler]
-    public HookResult OnPlayerSpawned(EventPlayerSpawn @event, GameEventInfo info)
-    {
-        // TODO prevent ghosts from picking up weapons and buying (maybe set money to 0?)
-        var player = @event.Userid;
-
-        Server.NextFrame(() =>
-            {
-                AddTimer(0.2f, () =>
-                {
-                    if (IsValidGhost(player))
-                    {
-                        RemoveWeaponsFromPlayer(player);
-                    }
-                }, TimerFlags.STOP_ON_MAPCHANGE);
-            }
-        );
-
-        return HookResult.Continue;
-    }
-
-    [GameEventHandler]
     public HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
         Server.NextFrame(() =>
@@ -66,6 +45,8 @@ public class GhostPlugin : BasePlugin
                 if (IsValidGhost(player))
                 {
                     SetPlayerMoney(player, 0);
+                    RemoveWeaponsFromPlayer(player);
+                    SetPlayerVelocityMultiplier(player, 1.5f);
                 }
                 else if (IsValidHuman(player))
                 {
@@ -75,6 +56,18 @@ public class GhostPlugin : BasePlugin
         });
 
         return HookResult.Continue;
+    }
+
+    private static void SetPlayerVelocityMultiplier(CCSPlayerController player, float multiplier)
+    {
+        if (!IsValidGhost(player))
+            return;
+
+        if (player.PlayerPawn == null || !player.PlayerPawn.IsValid || !player.PawnIsAlive || player.PlayerPawn.Value == null)
+            return;
+
+        player.PlayerPawn.Value.VelocityModifier = multiplier;
+        Utilities.SetStateChanged(player, "CCSPlayerPawn", "m_flVelocityModifier");
     }
 
     private static bool IsValidGhost(CCSPlayerController? player)
@@ -110,17 +103,29 @@ public class GhostPlugin : BasePlugin
         MessageUtil.WriteLine($"Removing {player.PlayerName}'s weapons.");
 
         player.RemoveWeapons();
+
+        SetAllowWeaponPickup(player, true);
+
         player.GiveNamedItem(CsItem.DefaultKnifeT);
 
-        if (player.PlayerPawn.Value?.WeaponServices != null)
+        SetAllowWeaponPickup(player, false);
+    }
+
+    private static void SetAllowWeaponPickup(CCSPlayerController player, bool allow)
+    {
+        if (player.PlayerPawn.Value?.WeaponServices == null)
         {
-            player.PlayerPawn.Value.WeaponServices.PreventWeaponPickup = true;
+            return;
         }
+
+        player.PlayerPawn.Value.WeaponServices.PreventWeaponPickup = false;
     }
 
     private static void SetPlayerAlphaBasedOnSpeed(CCSPlayerPawn pawn)
     {
         int alpha = Math.Clamp((int)pawn.AbsVelocity.Length2D() - 5, 0, 150);
+
+        pawn.ShadowStrength = alpha > 0 ? 1 : 0;
 
         SetEntityAlpha(pawn, alpha);
 
@@ -141,13 +146,13 @@ public class GhostPlugin : BasePlugin
         Utilities.SetStateChanged(entity, "CBaseModelEntity", "m_clrRender");
     }
 
-    private static void SetPlayerMoney(CCSPlayerController controller, int money)
+    private static void SetPlayerMoney(CCSPlayerController player, int money)
     {
-        var moneyServices = controller.InGameMoneyServices;
+        var moneyServices = player.InGameMoneyServices;
         if (moneyServices == null) return;
 
         moneyServices.Account = money;
 
-        Utilities.SetStateChanged(controller, "CCSPlayerController", "m_pInGameMoneyServices");
+        Utilities.SetStateChanged(player, "CCSPlayerController", "m_pInGameMoneyServices");
     }
 }
