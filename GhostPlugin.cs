@@ -22,7 +22,7 @@ public class GhostPlugin : BasePlugin
 
         if (hotReload)
         {
-            MessageUtil.PrintToChatAll("Update detected, restarting map...");
+            MessageUtil.PrintToChatAll("Update dortected, restarting map...");
             Server.ExecuteCommand($"map {Server.MapName}");
         }
 
