@@ -47,13 +47,36 @@ public class GhostPlugin : BasePlugin
                     SetPlayerMoney(player, 0);
                     RemoveWeaponsFromPlayer(player);
                     SetPlayerVelocityMultiplier(player, 1.4f);
+                    SetWeaponVisible(player, false);
                 }
                 else if (IsValidHuman(player))
                 {
                     SetPlayerMoney(player, 10000);
+                    SetAllowWeaponPickup(player, true);
+                    SetPlayerAlpha(player, 255);
+                    SetWeaponVisible(player, true);
                 }
             });
         });
+
+        return HookResult.Continue;
+    }
+
+    [GameEventHandler]
+    public HookResult OnPlayerTakeDamage(EventPlayerHurt @event, GameEventInfo info)
+    {
+        var victim = @event.Userid;
+        var attacker = @event.Attacker;
+
+        if (!IsValidHuman(victim) || !IsValidGhost(attacker))
+            return HookResult.Continue;
+
+        if (@event.Weapon == "weapon_knife")
+        {
+            @event.DmgHealth = 100;
+            @event.Health = 0;
+            return HookResult.Continue;
+        }
 
         return HookResult.Continue;
     }
@@ -108,34 +131,52 @@ public class GhostPlugin : BasePlugin
 
         player.GiveNamedItem(CsItem.DefaultKnifeT);
 
-        SetAllowWeaponPickup(player, false);
+        // SetAllowWeaponPickup(player, false);
     }
 
     private static void SetAllowWeaponPickup(CCSPlayerController player, bool allow)
     {
         if (player.PlayerPawn.Value?.WeaponServices == null)
-        {
             return;
-        }
 
         player.PlayerPawn.Value.WeaponServices.PreventWeaponPickup = !allow;
     }
 
     private static void SetPlayerAlphaBasedOnSpeed(CCSPlayerPawn pawn)
     {
-        const int MAX_ALPHA = 100;
+        const int MAX_ALPHA = 85;
         int alpha = Math.Clamp((int)pawn.AbsVelocity.Length2D() - 5, 0, MAX_ALPHA);
 
         pawn.ShadowStrength = alpha / MAX_ALPHA;
 
         SetEntityAlpha(pawn, alpha);
+    }
 
-        var weapon = pawn.WeaponServices?.ActiveWeapon?.Value;
+    private static void SetPlayerAlpha(CCSPlayerController player, int alpha)
+    {
+        if (player == null || !player.IsValid)
+            return;
 
-        if (weapon != null && weapon.IsValid)
-        {
-            SetEntityAlpha(weapon, 0);
-        }
+        if (player.PlayerPawn == null || !player.PlayerPawn.IsValid)
+            return;
+
+        SetEntityAlpha(player.PlayerPawn.Value!, alpha);
+    }
+
+    private static void SetWeaponVisible(CCSPlayerController player, bool visible)
+    {
+        if (player == null || !player.IsValid)
+            return;
+
+        if (player.PlayerPawn.Value?.WeaponServices == null)
+            return;
+
+        var weapon = player.PlayerPawn.Value.WeaponServices.ActiveWeapon.Value;
+
+        if (weapon == null || !weapon.IsValid)
+            return;
+
+        SetEntityAlpha(weapon, visible ? 255 : 0);
     }
 
     private static void SetEntityAlpha(CBaseModelEntity entity, int alpha)
