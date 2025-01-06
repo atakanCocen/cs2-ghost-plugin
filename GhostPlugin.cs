@@ -46,7 +46,7 @@ public class GhostPlugin : BasePlugin
                 {
                     if (IsValidGhost(player))
                     {
-                        RemoveAllPlayerWeapons(player);
+                        RemoveWeaponsFromPlayer(player);
                     }
                 }, TimerFlags.STOP_ON_MAPCHANGE);
             }
@@ -75,26 +75,16 @@ public class GhostPlugin : BasePlugin
         });
     }
 
-    public static void RemoveAllPlayerWeapons(CCSPlayerController? player)
+    public static void RemoveWeaponsFromPlayer(CCSPlayerController? player)
     {
         if (player == null || !player.IsValid) return;
         if (player.PlayerPawn == null || !player.PlayerPawn.IsValid) return;
         if (!player.PawnIsAlive) return;
-        if (player.PlayerPawn.Value == null || !player.PlayerPawn.Value.IsValid) return;
-        if (player.PlayerPawn.Value?.WeaponServices?.MyWeapons == null) return;
 
         MessageUtil.WriteLine($"Removing {player.PlayerName}'s weapons.");
 
-        foreach (var weapon in player.PlayerPawn.Value.WeaponServices.MyWeapons)
-        {
-            if (weapon == null || !weapon.IsValid) continue;
-            var weaponValue = weapon.Value;
-            if (weaponValue == null || !weaponValue.IsValid) continue;
-            if (weaponValue.DesignerName?.Contains("weapon_knife") ?? false) continue;
-            if (weaponValue.DesignerName == null) continue;
-            player.DropActiveWeapon();
-            weapon.Value?.Remove();
-        }
+        player.RemoveWeapons();
+        player.GiveNamedItem(CsItem.DefaultKnifeT);
     }
 
     private static void SetPlayerAlphaBasedOnSpeed(CCSPlayerPawn pawn)
