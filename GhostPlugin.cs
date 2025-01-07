@@ -1,8 +1,10 @@
 ﻿using System.Drawing;
+using System.Reflection.Metadata;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
+using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 
@@ -15,7 +17,7 @@ public class GhostPlugin : BasePlugin
     public override string ModuleName => "GhostPlugin";
 
     public override string ModuleVersion => Version;
-
+    
     public override void Load(bool hotReload)
     {
         Console.WriteLine($"{ModuleName} {ModuleVersion} loaded!");
@@ -34,7 +36,7 @@ public class GhostPlugin : BasePlugin
     {
         UpdateAllGhostAlphas();
     }
-
+    
     [GameEventHandler]
     public HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
@@ -51,10 +53,12 @@ public class GhostPlugin : BasePlugin
                 }
                 else if (IsValidHuman(player))
                 {
+                    SetPlayerHealth(player, 50);
                     SetPlayerMoney(player, 10000);
                     SetAllowWeaponPickup(player, true);
                     SetPlayerAlpha(player, 255);
                     SetWeaponVisible(player, true);
+                    
                 }
             });
         });
@@ -67,15 +71,17 @@ public class GhostPlugin : BasePlugin
     {
         var victim = @event.Userid;
         var attacker = @event.Attacker;
-
-        if (!IsValidHuman(victim) || !IsValidGhost(attacker))
-            return HookResult.Continue;
-
-        if (@event.Weapon == "weapon_knife")
+        
+        if (IsValidHuman(victim) && IsValidGhost(attacker) && @event.Weapon == "weapon_knife")
         {
             @event.DmgHealth = 100;
             @event.Health = 0;
             return HookResult.Continue;
+        }
+
+        if (IsValidGhost(victim) && IsValidHuman(attacker))
+        {
+            PreventSlowdownOnPlayerHurt(victim);
         }
 
         return HookResult.Continue;
@@ -86,7 +92,7 @@ public class GhostPlugin : BasePlugin
         if (!IsValidGhost(player))
             return;
 
-        if (player.PlayerPawn == null || !player.PlayerPawn.IsValid || !player.PawnIsAlive || player.PlayerPawn.Value == null)
+        if (player?.PlayerPawn == null || !player.PlayerPawn.IsValid || !player.PawnIsAlive || player.PlayerPawn.Value == null)
             return;
 
         player.PlayerPawn.Value.VelocityModifier = multiplier;
@@ -102,25 +108,37 @@ public class GhostPlugin : BasePlugin
     {
         return player != null && player.IsValid && player.Team == CsTeam.CounterTerrorist;
     }
+    
+    private static void SetPlayerHealth(CCSPlayerController? player, int amount)
+    {
+        if (player == null || !player.IsValid || player?.PlayerPawn == null 
+            || !player.PlayerPawn.IsValid || !player.PawnIsAlive ||
+            player.PlayerPawn.Value == null)
+            return;
+
+        player.Health = amount;
+        
+        Utilities.SetStateChanged(player.PlayerPawn.Value, "CBaseEntity", "m_iHealth");
+    }
 
     private static void UpdateAllGhostAlphas()
     {
         Utilities.GetPlayers().ForEach(player =>
         {
-            if (player == null || !player.IsValid || player.Team != CsTeam.Terrorist)
+            if (!player.IsValid || player.Team != CsTeam.Terrorist)
                 return;
 
-            if (player.PlayerPawn == null || !player.PlayerPawn.IsValid || !player.PawnIsAlive)
+            if (player?.PlayerPawn == null || !player.PlayerPawn.IsValid || !player.PawnIsAlive)
                 return;
 
             SetPlayerAlphaBasedOnSpeed(player.PlayerPawn.Value!);
         });
     }
-
+    
     public static void RemoveWeaponsFromPlayer(CCSPlayerController? player)
     {
         if (player == null || !player.IsValid) return;
-        if (player.PlayerPawn == null || !player.PlayerPawn.IsValid) return;
+        if (player?.PlayerPawn == null || !player.PlayerPawn.IsValid) return;
         if (!player.PawnIsAlive) return;
 
         MessageUtil.WriteLine($"Removing {player.PlayerName}'s weapons.");
@@ -131,7 +149,7 @@ public class GhostPlugin : BasePlugin
 
         player.GiveNamedItem(CsItem.DefaultKnifeT);
 
-        // SetAllowWeaponPickup(player, false);
+        SetAllowWeaponPickup(player, false);
     }
 
     private static void SetAllowWeaponPickup(CCSPlayerController player, bool allow)
@@ -152,7 +170,7 @@ public class GhostPlugin : BasePlugin
         SetEntityAlpha(pawn, alpha);
     }
 
-    private static void SetPlayerAlpha(CCSPlayerController player, int alpha)
+    private static void SetPlayerAlpha(CCSPlayerController? player, int alpha)
     {
         if (player == null || !player.IsValid)
             return;
@@ -163,7 +181,7 @@ public class GhostPlugin : BasePlugin
         SetEntityAlpha(player.PlayerPawn.Value!, alpha);
     }
 
-    private static void SetWeaponVisible(CCSPlayerController player, bool visible)
+    private static void SetWeaponVisible(CCSPlayerController? player, bool visible)
     {
         if (player == null || !player.IsValid)
             return;
@@ -179,7 +197,7 @@ public class GhostPlugin : BasePlugin
         SetEntityAlpha(weapon, visible ? 255 : 0);
     }
 
-    private static void SetEntityAlpha(CBaseModelEntity entity, int alpha)
+    private static void SetEntityAlpha(CBaseModelEntity? entity, int alpha)
     {
         if (entity == null || !entity.IsValid)
             return;
@@ -196,5 +214,39 @@ public class GhostPlugin : BasePlugin
         moneyServices.Account = money;
 
         Utilities.SetStateChanged(player, "CCSPlayerController", "m_pInGameMoneyServices");
+    }
+    
+    private static void OnPlayerGivenC4(CCSPlayerController? player, CsItem c4)
+    {
+        // Handle the event when a player is given the C4
+        if (player == null || !player.IsValid)
+            return;
+        
+        player.GiveNamedItem(c4);
+        Console.WriteLine($"Player {player.PlayerName} has received the C4 bomb.");
+    }
+    
+    private static void PreventSlowdownOnPlayerHurt(CCSPlayerController? player)
+    {
+        if (player == null || !player.IsValid)
+            return;
+        
+        if (player.PlayerPawn.Value == null || !player.PlayerPawn.IsValid || !player.PlayerPawn.Value.IsValid)
+            return;
+        
+        Vector playerSpeed = player!.PlayerPawn.Value!.AbsVelocity;
+
+        player.PrintToChat($"OnTakeDamagePost VelocityModifier = {player.PlayerPawn.Value.VelocityModifier}");
+        SetPlayerVelocityMultiplier(player, 1.4f);
+
+        Server.NextFrame(() =>
+        {
+            SetPlayerVelocityMultiplier(player, 1.4f);
+            if (player.PlayerPawn?.Value == null || !player.PlayerPawn.IsValid || !player.PlayerPawn.Value.IsValid)
+                return;
+            player!.PlayerPawn.Value!.AbsVelocity.X = playerSpeed.X;
+            player!.PlayerPawn.Value!.AbsVelocity.Y = playerSpeed.Y;
+            player!.PlayerPawn.Value!.AbsVelocity.Z = playerSpeed.Z;
+        });
     }
 }
