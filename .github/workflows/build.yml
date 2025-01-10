@@ -22,9 +22,9 @@ jobs:
       # - name: Test with the dotnet CLI
       #   run: dotnet test
       - name: Copy artifacts to addons folder
-        run: mkdir -p addons/counterstrikesharp/plugins/GhostPlugin && cp -r bin/Release/net8.0/${{ matrix.runtime }}/*.* addons/counterstrikesharp/plugins/GhostPlugin
+        run: mkdir -p target/addons/counterstrikesharp/plugins/GhostPlugin && cp -r bin/Release/net8.0/${{ matrix.runtime }}/*.* target/addons/counterstrikesharp/plugins/GhostPlugin
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ghost-plugin-${{ matrix.runtime }}.zip
-          path: addons
+          path: target
