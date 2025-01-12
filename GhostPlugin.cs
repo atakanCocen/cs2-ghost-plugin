@@ -102,8 +102,8 @@ public class GhostPlugin : BasePlugin
         {
             if (attackerWeaponName == "weapon_knife")
             {
-                damageInfo.Damage = 100;
-                damageInfo.OriginalDamage = 100;
+                damageInfo.Damage = 150;
+                damageInfo.OriginalDamage = 150;
                 return HookResult.Continue;
             }
             else
