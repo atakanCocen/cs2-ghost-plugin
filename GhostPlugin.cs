@@ -3,6 +3,8 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
+using CounterStrikeSharp.API.Modules.Memory;
+using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 
@@ -27,6 +29,7 @@ public class GhostPlugin : BasePlugin
         }
 
         RegisterListener<Listeners.OnTick>(OnTick);
+        VirtualFunctions.CBaseEntity_TakeDamageOldFunc.Hook(OnTakeDamange, HookMode.Pre);
     }
 
     [GameEventHandler]
@@ -62,20 +65,51 @@ public class GhostPlugin : BasePlugin
         return HookResult.Continue;
     }
 
-    [GameEventHandler]
-    public HookResult OnPlayerTakeDamage(EventPlayerHurt @event, GameEventInfo info)
+    private HookResult OnTakeDamange(DynamicHook hook)
     {
-        var victim = @event.Userid;
-        var attacker = @event.Attacker;
+        var entity = hook.GetParam<CEntityInstance>(0);
+        if (!entity.IsValid) { return HookResult.Continue; }
+        var damageInfo = hook.GetParam<CTakeDamageInfo>(1);
 
-        if (!IsValidHuman(victim) || !IsValidGhost(attacker))
-            return HookResult.Continue;
+        if (entity.DesignerName != "player") { return HookResult.Continue; }
+        var victimPawn = entity.As<CCSPlayerPawn>();
+        if (victimPawn == null || victimPawn is { IsValid: false }) { return HookResult.Continue; }
 
-        if (@event.Weapon == "weapon_knife")
+        var victim = victimPawn.OriginalController.Get();
+        if (victim is null || victim is { IsValid: false }) return HookResult.Continue;
+
+        var attackerHandle = damageInfo.Attacker;
+        if (attackerHandle == null || attackerHandle is { IsValid: false }) return HookResult.Continue;
+
+        if (attackerHandle.Value!.DesignerName != "player") return HookResult.Continue;
+
+        var attackerPawn = attackerHandle.Value!.As<CCSPlayerPawn>();
+        if (attackerPawn == null || attackerPawn is { IsValid: false }) return HookResult.Continue;
+
+        var attacker = attackerPawn.OriginalController.Get();
+        if (attacker is null || attacker is { IsValid: false }) return HookResult.Continue;
+
+        var attackerWeaponName = attackerPawn.WeaponServices?.ActiveWeapon?.Value?.DesignerName;
+
+        if (damageInfo.Inflictor != null && damageInfo.Inflictor.IsValid)
         {
-            @event.DmgHealth = 100;
-            @event.Health = 0;
-            return HookResult.Continue;
+            MessageUtil.WriteLine($"Inflictor: {damageInfo.Inflictor.Value!.DesignerName}");
+        }
+
+        if (IsValidGhost(attacker) && IsValidHuman(victim))
+        {
+            if (attackerWeaponName == "weapon_knife")
+            {
+                damageInfo.Damage = 100;
+                damageInfo.OriginalDamage = 100;
+                return HookResult.Continue;
+            }
+            else
+            {
+                damageInfo.Damage = 0;
+                damageInfo.OriginalDamage = 0;
+                return HookResult.Continue;
+            }
         }
 
         return HookResult.Continue;
