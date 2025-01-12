@@ -6,6 +6,7 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using CounterStrikeSharp.API.Modules.Timers;
+using CounterStrikeSharp.API.Modules.UserMessages;
 using CounterStrikeSharp.API.Modules.Utils;
 
 namespace GhostPlugin;
@@ -154,6 +155,7 @@ public class GhostPlugin : BasePlugin
 
     private static void SetAllowWeaponPickup(CCSPlayerController player, bool allow)
     {
+
         if (player.PlayerPawn.Value?.WeaponServices == null)
             return;
 
@@ -164,9 +166,8 @@ public class GhostPlugin : BasePlugin
     {
         const int MAX_ALPHA = 85;
         int alpha = Math.Clamp((int)pawn.AbsVelocity.Length2D() - 5, 0, MAX_ALPHA);
-
-        pawn.ShadowStrength = alpha / MAX_ALPHA;
-
+        pawn.ShadowStrength = 0;
+        
         SetEntityAlpha(pawn, alpha);
     }
 
@@ -177,7 +178,7 @@ public class GhostPlugin : BasePlugin
 
         if (player.PlayerPawn == null || !player.PlayerPawn.IsValid)
             return;
-
+        
         SetEntityAlpha(player.PlayerPawn.Value!, alpha);
     }
 
@@ -202,6 +203,7 @@ public class GhostPlugin : BasePlugin
         if (entity == null || !entity.IsValid)
             return;
 
+        entity.ShadowStrength = alpha == 255 ? 1 : 0;
         entity.Render = Color.FromArgb(alpha, 255, 255, 255);
         Utilities.SetStateChanged(entity, "CBaseModelEntity", "m_clrRender");
     }
