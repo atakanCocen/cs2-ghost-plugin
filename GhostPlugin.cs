@@ -167,13 +167,10 @@ public class GhostPlugin : BasePlugin
 
         MessageUtil.WriteLine($"Removing {player.PlayerName}'s weapons.");
 
-        SetAllowWeaponPickup(player, true);
-
         player.RemoveWeapons();
 
         player.GiveNamedItem(CsItem.DefaultKnifeT);
-
-        SetAllowWeaponPickup(player, false);
+        
     }
 
     private static void SetAllowWeaponPickup(CCSPlayerController player, bool allow)
