@@ -2,6 +2,7 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
@@ -30,6 +31,7 @@ public class GhostPlugin : BasePlugin
 
         RegisterListener<Listeners.OnTick>(OnTick);
         VirtualFunctions.CBaseEntity_TakeDamageOldFunc.Hook(OnTakeDamange, HookMode.Pre);
+        VirtualFunctions.CCSPlayer_ItemServices_CanAcquireFunc.Hook(OnWeaponCanAcquire, HookMode.Pre);
     }
 
     [GameEventHandler]
@@ -270,4 +272,31 @@ public class GhostPlugin : BasePlugin
             player!.PlayerPawn.Value!.AbsVelocity.Z = playerSpeed.Z;
         });
     }
+    
+    public static HookResult OnWeaponCanAcquire(DynamicHook hook)
+    {
+
+        if (hook.GetParam<CCSPlayer_ItemServices>(0).Pawn.Value?.Controller.Value?.As<CCSPlayerController>() is not CCSPlayerController player)
+        {
+            return HookResult.Continue;
+        }
+
+        if (!IsValidGhost(player))
+        {
+            return HookResult.Continue;
+        }
+
+        CCSWeaponBaseVData vdata = VirtualFunctions.GetCSWeaponDataFromKeyFunc
+                                       .Invoke(-1, hook.GetParam<CEconItemView>(1).ItemDefinitionIndex.ToString())
+                                   ?? throw new Exception("Failed to retrieve CCSWeaponBaseVData from ItemDefinitionIndex.");
+        
+        if (vdata.Name == "weapon_knife" || vdata.Name == "weapon_c4")
+        {
+            return HookResult.Continue;
+        }
+        
+        hook.SetReturn(AcquireResult.NotAllowedByProhibition);
+        return HookResult.Stop;
+    }
+
 }
