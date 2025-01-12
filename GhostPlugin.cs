@@ -305,7 +305,7 @@ public class GhostPlugin : BasePlugin
 
         List<string> allowedWeapons = new List<string>();
         allowedWeapons.Add("weapon_c4");
-        allowedWeapons.Add("weapon_knife");
+        allowedWeapons.Add("weapon_knife_t");
 
         foreach (var weapon in
                  client.PlayerPawn.Value?.WeaponServices?.MyWeapons.Where(
