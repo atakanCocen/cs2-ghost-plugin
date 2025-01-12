@@ -289,7 +289,7 @@ public class GhostPlugin : BasePlugin
                                        .Invoke(-1, hook.GetParam<CEconItemView>(1).ItemDefinitionIndex.ToString())
                                    ?? throw new Exception("Failed to retrieve CCSWeaponBaseVData from ItemDefinitionIndex.");
         
-        if (vdata.Name == "weapon_knife" || vdata.Name == "weapon_c4")
+        if (vdata.Name.Contains("knife") || vdata.Name == "weapon_c4")
         {
             return HookResult.Continue;
         }
