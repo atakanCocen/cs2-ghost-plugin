@@ -50,7 +50,8 @@ public class GhostPlugin : BasePlugin
                 if (IsValidGhost(player))
                 {
                     SetPlayerMoney(player, 0);
-                    RemoveWeaponsFromPlayer(player);
+                    // RemoveWeaponsFromPlayer(player);
+                    DropDisallowedWeapons(player);
                     SetPlayerVelocityMultiplier(player, 1.4f);
                     SetWeaponVisible(player, false);
                 }
@@ -169,6 +170,7 @@ public class GhostPlugin : BasePlugin
 
         player.RemoveWeapons();
 
+        player.GiveNamedItem(CsItem.Knife);
         player.GiveNamedItem(CsItem.DefaultKnifeT);
         
     }
@@ -295,5 +297,28 @@ public class GhostPlugin : BasePlugin
         hook.SetReturn(AcquireResult.NotAllowedByProhibition);
         return HookResult.Stop;
     }
+
+    public static void DropDisallowedWeapons(CCSPlayerController client)
+    {
+        if (client == null)
+            return;
+
+        List<string> allowedWeapons = new List<string>();
+        allowedWeapons.Add("weapon_c4");
+        allowedWeapons.Add("weapon_knife");
+
+        foreach (var weapon in
+                 client.PlayerPawn.Value?.WeaponServices?.MyWeapons.Where(
+                     x => !allowedWeapons.Contains(x.Value?.DesignerName)))
+        {
+            if (weapon != null && weapon.IsValid)
+            {
+                client.PlayerPawn.Value!.WeaponServices!.ActiveWeapon.Raw = weapon.Raw;
+                client.DropActiveWeapon();
+            }
+        }
+        
+    }
+    
 
 }
