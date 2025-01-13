@@ -297,19 +297,26 @@ public class GhostPlugin : BasePlugin
         hook.SetReturn(AcquireResult.NotAllowedByProhibition);
         return HookResult.Stop;
     }
+    
+    private static bool isAllowedGhostWeapon(CHandle<CBasePlayerWeapon> weapon)
+    {
+        List<string> allowedWeapons = new List<string>();
+        allowedWeapons.Add("weapon_c4");
+        allowedWeapons.Add("knife");
+        
+        if (weapon == null || !weapon.IsValid)
+            return false;
 
+        return allowedWeapons.Exists(weapon.Value!.DesignerName.Contains);
+    }
+    
     public static void DropDisallowedWeapons(CCSPlayerController client)
     {
         if (client == null)
             return;
 
-        List<string> allowedWeapons = new List<string>();
-        allowedWeapons.Add("weapon_c4");
-        allowedWeapons.Add("weapon_knife_t");
-
         foreach (var weapon in
-                 client.PlayerPawn.Value?.WeaponServices?.MyWeapons.Where(
-                     x => !allowedWeapons.Contains(x.Value?.DesignerName)))
+                 client.PlayerPawn.Value?.WeaponServices?.MyWeapons.Where(isAllowedGhostWeapon))
         {
             if (weapon != null && weapon.IsValid)
             {
